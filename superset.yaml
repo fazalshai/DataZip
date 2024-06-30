@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset
+  namespace: default
+  labels:
+    app: superset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset
+  template:
+    metadata:
+      labels:
+        app: superset
+    spec:
+      containers:
+      - name: superset
+        image: apache/superset:latest
+        ports:
+        - containerPort: 8088
+        env:
+        - name: SUPERSET_LOAD_EXAMPLES
+          value: "no"
+        - name: SUPERSET_SECRET_KEY
+          value: "0yN1Vt9fXpGPucH8wiQs4u9cE9lCHRMdng5ScAXHQ7WZsYLFxW4"
+        - name: SUPERSET_DATABASE_URI
+          value: "sqlite:////var/lib/superset/superset.db"
+        volumeMounts:
+        - name: superset-data
+          mountPath: /var/lib/superset
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8088
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8088
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: superset-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset-web
+  namespace: default
+spec:
+  type: NodePort
+  ports:
+    - port: 8088
+      targetPort: 8088
+      nodePort: 30000
+  selector:
+    app: superset
